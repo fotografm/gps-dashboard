@@ -1,0 +1,18 @@
+[Unit]
+Description=GPS Dashboard — GPS web interface (port 8092)
+After=gpsd.service network.target
+Wants=gpsd.service
+
+[Service]
+Type=simple
+User=user
+WorkingDirectory=%h/gps-dashboard
+ExecStart=%h/gps-dashboard/venv/bin/python3 %h/gps-dashboard/gps_web.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=gps-dashboard
+
+[Install]
+WantedBy=multi-user.target

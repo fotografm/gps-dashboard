@@ -1,0 +1,18 @@
+[Unit]
+Description=GPS Dashboard — 3D satellite skymap (port 8093)
+After=gps-dashboard.service network.target
+Wants=gps-dashboard.service
+
+[Service]
+Type=simple
+User=user
+WorkingDirectory=%h/gps-dashboard
+ExecStart=%h/gps-dashboard/venv/bin/python3 %h/gps-dashboard/skymap3d.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=gps-skymap3d
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,17 @@
+[Unit]
+Description=GPS Dashboard — landing page (port 80)
+After=gps-dashboard.service network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=%h/gps-dashboard
+ExecStart=%h/gps-dashboard/venv/bin/python3 %h/gps-dashboard/landing.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=gps-landing
+
+[Install]
+WantedBy=multi-user.target

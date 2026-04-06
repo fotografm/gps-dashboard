@@ -1,0 +1,13 @@
+# /etc/udev/rules.d/99-gps-dashboard.rules
+#
+# Automatically restart gpsd when the T-Beam GPS receiver (ttyACM0) is
+# plugged in at runtime.  This allows the T-Beam to be connected after
+# boot without needing a manual gpsd restart.
+#
+# NOTE: Do NOT hot-plug the T-Beam on a bus-powered USB hub connected to a
+# Pi Zero 2W — the peak enumeration current will cause a brownout and freeze
+# the Pi.  Always plug the T-Beam in before powering the Pi, or use a
+# powered USB hub.  See README.md for details.
+
+ACTION=="add", SUBSYSTEM=="tty", KERNEL=="ttyACM0", \
+    RUN+="/bin/systemctl restart gpsd.service"

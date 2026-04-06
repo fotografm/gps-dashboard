@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ hostname }}</title>
+<style>
+  :root {
+    --bg:      #0a0a14;
+    --surface: #161628;
+    --border:  #303058;
+    --text:    #e8e8ff;
+    --muted:   #9898c0;
+    --accent:  #60a5fa;
+    --green:   #4ade80;
+    --green2:  #22c55e;
+    --green3:  #16a34a;
+    --red:     #f87171;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 14px; min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 28px 20px;
+  }
+
+  /* ── Clock ── */
+  .clock-wrap { text-align: center; margin-bottom: 28px; }
+  .clock-time { font-size: 48px; color: var(--accent); letter-spacing: 0.06em; line-height: 1; }
+  .clock-date { font-size: 14px; color: var(--muted); margin-top: 6px; letter-spacing: 0.04em; }
+
+  /* ── Service buttons ── */
+  .services {
+    display: flex; flex-wrap: wrap; gap: 14px;
+    justify-content: center; margin-bottom: 28px;
+    width: 100%; max-width: 940px;
+  }
+  .svc-btn {
+    flex: 1; min-width: 180px; max-width: 280px;
+    background: #1c1c3a; border: 1px solid #3a3a6a;
+    border-radius: 10px; padding: 18px 20px;
+    display: flex; flex-direction: column; gap: 6px;
+    cursor: pointer; transition: border-color 0.2s, background 0.2s;
+    text-decoration: none; color: var(--text);
+  }
+  .svc-btn:hover { background: #22224a; border-color: var(--accent); }
+  /* Fixed height icon area so text baselines align across all buttons */
+  .svc-btn .icon { font-size: 26px; height: 36px; display: flex; align-items: center; }
+  .svc-btn .name { font-size: 14px; font-weight: bold; color: var(--accent); }
+  .svc-btn .desc { font-size: 11px; color: var(--muted); }
+  .svc-btn .port { font-size: 11px; color: #5050a0; margin-top: 4px; }
+  .svc-status {
+    display: inline-block; width: 9px; height: 9px;
+    border-radius: 50%; background: #303050; margin-right: 5px; vertical-align: middle;
+  }
+  .svc-status.up { background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+  /* ── Stats ── */
+  .stats-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px; width: 100%; max-width: 940px; margin-bottom: 28px;
+  }
+  .stat-card { background: #161628; border: 1px solid #303058; border-radius: 8px; padding: 12px 16px; }
+  .stat-card label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .stat-card .val  { font-size: 20px; color: var(--text); }
+  .stat-card .sub  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* ── Storage section heading ── */
+  .section-heading {
+    width: 100%; max-width: 940px;
+    font-size: 11px; color: var(--green); text-transform: uppercase;
+    letter-spacing: 0.1em; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-heading::after {
+    content: ''; flex: 1; height: 1px; background: var(--green3); opacity: 0.4;
+  }
+
+  /* ── Storage panel ── */
+  .storage-panel {
+    width: 100%; max-width: 940px;
+    background: #0d1a10; border: 1px solid #1a4a28;
+    border-radius: 10px; padding: 18px; margin-bottom: 28px;
+  }
+  .sd-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+  .sd-label { font-size: 12px; color: var(--muted); }
+  .sd-value { font-size: 12px; color: var(--green); font-weight: bold; }
+  .sd-bar-wrap {
+    height: 10px; background: #0a2010; border-radius: 5px;
+    overflow: hidden; margin-bottom: 14px; border: 1px solid #1a4a28;
+  }
+  .sd-bar-fill {
+    height: 100%; border-radius: 5px;
+    background: linear-gradient(90deg, #16a34a, #4ade80);
+    transition: width 0.6s ease; box-shadow: 0 0 8px #4ade8066;
+  }
+  .sd-bar-fill.warn { background: linear-gradient(90deg,#b45309,#fbbf24); box-shadow:0 0 8px #fbbf2466; }
+  .sd-bar-fill.crit { background: linear-gradient(90deg,#991b1b,#f87171); box-shadow:0 0 8px #f8717166; }
+
+  .db-table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  .db-table thead th {
+    text-align: left; font-size: 10px; color: var(--green3);
+    text-transform: uppercase; letter-spacing: 0.07em;
+    padding: 4px 8px 8px; border-bottom: 1px solid #1a4a28;
+  }
+  .db-table thead th:not(:first-child) { text-align: right; }
+  .db-table tbody tr:hover { background: #0f2015; }
+  .db-table tbody td { padding: 7px 8px; border-bottom: 1px solid #0d2015; font-size: 13px; }
+  .db-table tbody td:not(:first-child) { text-align: right; }
+  .db-name  { color: var(--green); }
+  .db-size  { color: #86efac; font-weight: bold; }
+  .db-count { color: var(--muted); font-size: 12px; }
+  .mini-bar-wrap { height: 6px; background: #0a2010; border-radius: 3px; min-width: 80px; overflow: hidden; }
+  .mini-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #16a34a, #4ade80); }
+  .zoom-row { display: flex; gap: 16px; margin-top: 10px; flex-wrap: wrap;
+    border-top: 1px solid #1a4a28; padding-top: 10px; }
+  .zoom-item { text-align: center; }
+  .zoom-item .z-label { font-size: 10px; color: var(--green3); text-transform: uppercase; margin-bottom: 3px; }
+  .zoom-item .z-val   { font-size: 16px; color: var(--green); font-weight: bold; }
+
+  /* ── Shutdown ── */
+  .shutdown-btn {
+    background: #5a0f0f; color: #ffaaaa;
+    border: 1px solid #8b1a1a; padding: 14px 48px;
+    border-radius: 8px; cursor: pointer; font-size: 16px;
+    font-family: inherit; letter-spacing: 0.06em;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .shutdown-btn:hover { background: #7f1d1d; border-color: #c0232a; color: #ffd0d0; }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.8); z-index: 100;
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: #161628; border: 1px solid #3a3a6a;
+    border-radius: 10px; padding: 32px 44px; text-align: center;
+  }
+  .modal h2 { color: var(--red); font-size: 19px; margin-bottom: 8px; }
+  .modal p  { color: var(--muted); font-size: 13px; margin-bottom: 28px; }
+  .modal-btns { display: flex; gap: 12px; justify-content: center; }
+  .modal-btns button {
+    padding: 10px 26px; border-radius: 6px; font-size: 14px;
+    font-family: inherit; cursor: pointer; border: none;
+    font-weight: bold; letter-spacing: 0.03em;
+  }
+  .btn-cancel   { background: #2a2a4a; color: #c0c0e0; }
+  .btn-reboot   { background: #b45309; color: #fef3c7; }
+  .btn-shutdown { background: #991b1b; color: #fee2e2; }
+  .btn-cancel:hover   { background: #363660; }
+  .btn-reboot:hover   { background: #d97706; }
+  .btn-shutdown:hover { background: #c0222a; }
+</style>
+</head>
+<body>
+
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h2>⚠ System Control</h2>
+    <p>{{ hostname }}</p>
+    <div class="modal-btns">
+      <button class="btn-cancel"   onclick="closeModal()">Cancel</button>
+      <button class="btn-reboot"   onclick="doShutdown('reboot')">Reboot</button>
+      <button class="btn-shutdown" onclick="doShutdown('shutdown')">Shutdown</button>
+    </div>
+  </div>
+</div>
+
+<!-- Clock -->
+<div class="clock-wrap">
+  <div class="clock-time" id="clock-time">--:--:--</div>
+  <div class="clock-date" id="clock-date">---</div>
+</div>
+
+<!-- Service buttons — no hostname or subtitle above them -->
+<div class="services">
+  <a class="svc-btn" onclick="openPort({{ web_port }})">
+    <div class="icon">📡</div>
+    <div class="name">WiFi Logger</div>
+    <div class="desc">AP scanner · map · sightings database</div>
+    <div class="port"><span class="svc-status" id="st-wifi"></span>port {{ web_port }}</div>
+  </a>
+  <a class="svc-btn" onclick="openPort({{ gps_port }})">
+    <div class="icon">🛰</div>
+    <div class="name">GPS Dashboard</div>
+    <div class="desc">Skyplot · C/N₀ · elevation · Maidenhead</div>
+    <div class="port"><span class="svc-status" id="st-gps"></span>port {{ gps_port }}</div>
+  </a>
+  <a class="svc-btn" onclick="openPort({{ sky_port }})">
+    <div class="icon">🌐</div>
+    <div class="name">3D Skymap</div>
+    <div class="desc">3D satellite positions · orbital trails · draggable</div>
+    <div class="port"><span class="svc-status" id="st-3d"></span>port {{ sky_port }}</div>
+  </a>
+</div>
+
+<!-- System stats -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <label>Uptime</label>
+    <div class="val" id="uptime">—</div>
+  </div>
+  <div class="stat-card">
+    <label>CPU</label>
+    <div class="val" id="cpu">—</div>
+  </div>
+  <div class="stat-card">
+    <label>RAM used</label>
+    <div class="val" id="mem-used">—</div>
+    <div class="sub" id="mem-pct"></div>
+  </div>
+</div>
+
+<!-- Storage -->
+<div class="section-heading">💾 Storage</div>
+<div class="storage-panel">
+  <div class="sd-row">
+    <span class="sd-label">SD Card</span>
+    <span class="sd-value" id="sd-summary">—</span>
+  </div>
+  <div class="sd-bar-wrap">
+    <div class="sd-bar-fill" id="sd-bar" style="width:0%"></div>
+  </div>
+
+  <table class="db-table">
+    <thead>
+      <tr>
+        <th>Database</th>
+        <th>Size</th>
+        <th>Records</th>
+        <th style="min-width:90px">Usage</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><div class="db-name">wifi_logger.db</div><div class="db-count" style="font-size:10px">APs &amp; sightings</div></td>
+        <td class="db-size" id="wl-size">—</td>
+        <td class="db-count" id="wl-counts">—</td>
+        <td><div class="mini-bar-wrap"><div class="mini-bar-fill" id="wl-bar" style="width:0%"></div></div></td>
+      </tr>
+      <tr>
+        <td><div class="db-name">gps_history.db</div><div class="db-count" style="font-size:10px">Satellite history (24 h)</div></td>
+        <td class="db-size" id="gps-size">—</td>
+        <td class="db-count" id="gps-counts">—</td>
+        <td><div class="mini-bar-wrap"><div class="mini-bar-fill" id="gps-bar" style="width:0%"></div></div></td>
+      </tr>
+      <tr>
+        <td><div class="db-name">tiles.mbtiles</div><div class="db-count" style="font-size:10px">Map tile cache</div></td>
+        <td class="db-size" id="tile-size">—</td>
+        <td class="db-count" id="tile-counts">—</td>
+        <td><div class="mini-bar-wrap"><div class="mini-bar-fill" id="tile-bar" style="width:0%"></div></div></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="zoom-row" id="zoom-row" style="display:none">
+    <div class="zoom-item"><div class="z-label">Zoom 14</div><div class="z-val" id="z14">—</div></div>
+    <div class="zoom-item"><div class="z-label">Zoom 15</div><div class="z-val" id="z15">—</div></div>
+    <div class="zoom-item"><div class="z-label">Zoom 16</div><div class="z-val" id="z16">—</div></div>
+    <div class="zoom-item"><div class="z-label">Total tiles</div><div class="z-val" id="tile-total">—</div></div>
+  </div>
+</div>
+
+<button class="shutdown-btn" onclick="openModal()">⏻ &nbsp; System Shutdown</button>
+
+<script>
+// ── Clock ─────────────────────────────────────────────────────────────────────
+const DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MONTHS = ['January','February','March','April','May','June',
+                'July','August','September','October','November','December'];
+function updateClock() {
+  const now = new Date();
+  const hh  = String(now.getHours()).padStart(2,'0');
+  const mm  = String(now.getMinutes()).padStart(2,'0');
+  const ss  = String(now.getSeconds()).padStart(2,'0');
+  document.getElementById('clock-time').textContent = `${hh}:${mm}:${ss}`;
+  document.getElementById('clock-date').textContent =
+    `${DAYS[now.getDay()]} ${now.getDate()} ${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function openPort(port) {
+  window.open('http://' + window.location.hostname + ':' + port, '_blank');
+}
+function openModal()  { document.getElementById('modal').classList.add('active'); }
+function closeModal() { document.getElementById('modal').classList.remove('active'); }
+function doShutdown(action) {
+  closeModal();
+  fetch('/api/shutdown', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({action}),
+  }).then(() => {
+    document.body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;
+      height:100vh;color:#6060a0;font-family:monospace;font-size:20px">
+      ${action==='reboot'?'↻ Rebooting…':'⏻ Shutting down…'}</div>`;
+  });
+}
+
+// ── Sysinfo ───────────────────────────────────────────────────────────────────
+function fetchSysinfo() {
+  fetch('/api/sysinfo').then(r => r.json()).then(d => {
+    document.getElementById('uptime').textContent   = d.uptime   || '—';
+    document.getElementById('cpu').textContent      = d.cpu      || '—';
+    document.getElementById('mem-used').textContent = d.mem.used || '—';
+    document.getElementById('mem-pct').textContent  =
+      d.mem.pct ? d.mem.pct + '% of ' + d.mem.total : '';
+    setStatus('st-wifi', (d.services||{}).wifi_logger);
+    setStatus('st-gps',  (d.services||{}).gps_dash);
+    setStatus('st-3d',   (d.services||{}).skymap3d);
+  }).catch(e => console.error(e));
+}
+
+function setStatus(id, up) {
+  const el = document.getElementById(id);
+  if (el) el.className = 'svc-status' + (up ? ' up' : '');
+}
+
+// ── Storage ───────────────────────────────────────────────────────────────────
+function fetchStorage() {
+  fetch('/api/storage').then(r => r.json()).then(d => {
+    const sd = d.sd;
+    // SD card — include % before the GB used figure
+    document.getElementById('sd-summary').textContent =
+      `${sd.pct}% · ${sd.used} used of ${sd.total} — ${sd.free} free`;
+    const bar = document.getElementById('sd-bar');
+    bar.style.width = sd.pct + '%';
+    bar.className   = 'sd-bar-fill' +
+      (sd.pct >= 85 ? ' crit' : sd.pct >= 60 ? ' warn' : '');
+
+    const maxB = Math.max(d.wifi_db.size_b||0, d.gps_db.size_b||0, d.tiles.size_b||0, 1);
+
+    const wl = d.wifi_db;
+    document.getElementById('wl-size').textContent   = wl.exists ? wl.size : 'not yet created';
+    document.getElementById('wl-counts').textContent = wl.exists ? `${fmtN(wl.aps)} APs · ${fmtN(wl.sightings)} sightings` : '—';
+    document.getElementById('wl-bar').style.width    = (wl.size_b / maxB * 100).toFixed(1) + '%';
+
+    const gps = d.gps_db;
+    document.getElementById('gps-size').textContent   = gps.exists ? gps.size : 'not yet created';
+    document.getElementById('gps-counts').textContent = gps.exists ? `${fmtN(gps.rows)} satellite samples` : '—';
+    document.getElementById('gps-bar').style.width    = (gps.size_b / maxB * 100).toFixed(1) + '%';
+
+    const t = d.tiles;
+    document.getElementById('tile-size').textContent   = t.exists ? t.size : 'not yet created';
+    document.getElementById('tile-counts').textContent = t.exists ? `${fmtN(t.total)} tiles` : '—';
+    document.getElementById('tile-bar').style.width    = (t.size_b / maxB * 100).toFixed(1) + '%';
+
+    if (t.exists && t.total > 0) {
+      document.getElementById('zoom-row').style.display = 'flex';
+      document.getElementById('z14').textContent        = fmtN(t.z14);
+      document.getElementById('z15').textContent        = fmtN(t.z15);
+      document.getElementById('z16').textContent        = fmtN(t.z16);
+      document.getElementById('tile-total').textContent = fmtN(t.total);
+    }
+  }).catch(e => console.error('storage fetch:', e));
+}
+
+function fmtN(n) { return (n == null || n < 0) ? '—' : n.toLocaleString(); }
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  fetchSysinfo();
+  fetchStorage();
+  setInterval(fetchSysinfo, 10000);
+  setInterval(fetchStorage, 30000);
+});
+</script>
+</body>
+</html>
